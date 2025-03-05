@@ -54,14 +54,11 @@ cd distributed-calculator
 go mod tidy
 ```
 
-### Запуск через докер
+### Запуск через docker
 ```bash
-go run ./cmd/calc_service/...
 docker-compose up --build
 ```
-Сервис будет доступен по адресу `http://localhost:8080`
-
-### Запуск оркестратор
+### Запуск оркестратора
 ```bash
 go run ./cmd/calc_service/main.go
 ```
