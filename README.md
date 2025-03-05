@@ -1,9 +1,12 @@
-# Calculator Web Service
+# Распределённый вычислитель арифметических выражений
 
 ## Описание проекта
-Веб-сервис для вычисления арифметических выражений. Сервис принимает математические выражения через HTTP POST-запрос и возвращает их результат.
+Данный проект представляет собой распределённую систему для вычисления арифметических выражений. Система состоит из двух основных компонентов:
 
-## Поддерживаемые операции
+1. Оркестратор - сервер, который принимает арифметические выражения, разбивает их на атомарные операции и координирует их выполнение.
+2. Агент - вычислитель, который получает от оркестратора задачи на выполнение отдельных операций и возвращает результаты.
+
+## Особенности и ограничения
 - Сложение (+)
 - Вычитание (-)
 - Умножение (*)
@@ -14,48 +17,146 @@
 - Поддерживаются только целые и дробные числа
 - Недопустимы символы, не относящиеся к цифрам и базовым арифметическим операциям
 
+## Схема работы системы
+1. Пользователь отправляет арифметическое выражение в оркестратор
+2. Оркестратор разбивает выражение на отдельные операции (задачи)
+3. Агенты запрашивают у оркестратора доступные задачи
+4. Оркестратор отдаёт задачи агентам для выполнения
+5. Агенты вычисляют задачи и возвращают результаты оркестратору
+6. Оркестратор собирает результаты и формирует конечный ответ
+7. Пользователь может периодически запрашивать статус выражения и его результат
+
+## Структура проекта
+```
+.
+├── cmd
+│   ├── agent              // Исходный код агента
+│   └── calc_service       // Исходный код оркестратора
+├── internal
+│   ├── calculator         // Логика разбора выражений
+│   ├── handler            // HTTP-обработчики
+│   └── store              // Хранилище выражений и задач
+├── pkg
+│   └── logger             // Логирование
+├── static                 // Файлы веб-интерфейса
+├── Dockerfile.agent       // Dockerfile для агента
+├── Dockerfile.orchestrator// Dockerfile для оркестратора
+├── docker-compose.yml     // Конфигурация Docker Compose
+└── README.md              // Документация
+```
 
 ## Установка и запуск
 
 ### Клонирование репозитория
 ```bash
-git clone https://github.com/h4kurix/calc-service.git
-cd calc-service
+git clone https://github.com/h4kurix/distributed-calculator.git
+cd distributed-calculator
+go mod tidy
 ```
 
-### Запуск сервиса
+### Запуск через докер
 ```bash
 go run ./cmd/calc_service/...
+docker-compose up --build
 ```
-
 Сервис будет доступен по адресу `http://localhost:8080`
 
+### Запуск оркестратор
+```bash
+go run ./cmd/calc_service/main.go
+```
+### Запуск агента
+```bash
+go run ./cmd/agent/main.go
+```
 ### Запуск тестов
 ```bash
-# Запуск всех тестов
-go test ./...
-
 # Запуск тестов с подробным выводом
 go test ./... -v
-
-# Запуск тестов с покрытием кода
-go test ./... -cover
 ```
 
-## Примеры curl-запросов
+## Пользовательское API
+### 1. Добавление вычисления арифметического выражения
 
-### Успешный расчет (200)
-```shell
-curl "http://localhost:8080/api/v1/calculate" -Method POST -ContentType "application/json" -Body '{"expression": "2+2*2"}'
+```bash
+curl --location 'localhost:8080/api/v1/calculate' \
+--header 'Content-Type: application/json' \
+--data '{
+  "expression": "2+2*2"
+}'
+```
+Пример ответа:
+```json
+{
+    "id": "expr-1741175862649351679"
+}
 ```
 
-### Невалидное выражение(422)
-```shell
-curl "http://localhost:8080/api/v1/calculate" -Method POST -ContentType "application/json" -Body '{"expression": "2+2*d"}'
+### 2. Получение списка выражений
+```bash
+curl --location 'localhost:8080/api/v1/expressions'
 ```
 
-## Внутренная ошибка сервера(500)
-```shell
-curl "http://localhost:8080/api/v1/calculate" -Method POST -ContentType "application/json" -Body '{"expression": "2+2*("}'
+```json
+{
+    "expressions": [
+        {
+            "id": "expr-1741175667869744591",
+            "status": "done",
+            "result": 3780150
+        },
+        {
+            "id": "expr-1741175682158240897",
+            "status": "done",
+            "result": 10930908894
+        }
+    ]
+}
+```
+### 3. Получение выражения по ID
+```bash
+curl --location 'localhost:8080/api/v1/expressions/expr-1741208482157471170'
+```
+
+```json
+{
+    "expression": {
+        "id": "expr-1741208482157471170",
+        "status": "done",
+        "result": 10930908894
+    }
+}
+```
+## Внутреннее API (для агентов)
+
+### 1. Получение задачи для выполнения
+
+```bash
+curl --location 'localhost:8080/internal/task'
+```
+
+```json
+{
+    "task": {
+        "id": "task-1",
+        "expression_id": "expr-1741208648424766712",
+        "arg1": "2",
+        "arg2": "5465454446",
+        "operation": "*",
+        "operation_time": 200,
+        "Ready": false,
+        "InProgress": true,
+        "Completed": false
+    }
+}
+```
+### 2. Отправка результата выполнения задачи
+```bash
+curl --location 'localhost:8080/internal/task' \
+--header 'Content-Type: application/json' \
+--data '{
+  "id": "task-1",
+  "result": 4
+}'
 ```
 
