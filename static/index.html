@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Распределённый калькулятор</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        input,
+        button {
+            font-size: 16px;
+            padding: 5px;
+        }
+
+        .result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .loader {
+            display: inline-block;
+            font-size: 20px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Распределённый калькулятор</h1>
+    <form id="calcForm">
+        <input type="text" id="expression" placeholder="Например: 2+2*2" required>
+        <button type="submit">Вычислить</button>
+    </form>
+    <div class="result" id="result"></div>
+    <div class="loader" id="loader" style="display: none;">⏳</div>
+    <script>
+        document.getElementById('calcForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const expr = document.getElementById('expression').value.trim();
+            document.getElementById('result').innerText = 'Ожидание ответа...';
+            document.getElementById('loader').style.display = 'inline';
+
+            fetch('/api/v1/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ expression: expr })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('result').innerText = 'Ошибка: ' + data.error;
+                        document.getElementById('loader').style.display = 'none';
+                    } else {
+                        pollResult(data.id, 1);
+                    }
+                })
+                .catch(err => {
+                    console.error('Ошибка запроса:', err);
+                    document.getElementById('result').innerText = 'Ошибка сети или сервера.';
+                    document.getElementById('loader').style.display = 'none';
+                });
+        });
+
+        function pollResult(exprID, attempt = 1) {
+            fetch(`/api/v1/expressions/${exprID}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.expression) {
+                        if (data.expression.status === 'done') {
+                            document.getElementById('result').innerText = 'Результат: ' + data.expression.result;
+                            document.getElementById('loader').style.display = 'none';
+                            return;
+                        }
+                        if (data.expression.status === 'error') {
+                            document.getElementById('result').innerText = 'Ошибка: ' + (data.expression.error || 'Неизвестная ошибка.');
+                            document.getElementById('loader').style.display = 'none';
+                            return;
+                        }
+                        setTimeout(() => pollResult(exprID, attempt + 1), 500 * attempt);
+                    } else {
+                        document.getElementById('result').innerText = 'Ошибка: неверный ответ сервера.';
+                        document.getElementById('loader').style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error('Ошибка запроса:', err);
+                    document.getElementById('result').innerText = 'Ошибка сети или сервера.';
+                    document.getElementById('loader').style.display = 'none';
+                });
+        }
+    </script>
+</body>
+
+</html>

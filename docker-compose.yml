@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  # Orchestrator service
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.orchestrator
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - PORT=8080
+    volumes:
+      - ./static:/app/static
+
+  # Agent service
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    deploy:
+      replicas: 3
+    env_file:
+      - .env
+    environment:
+      - COMPUTING_POWER=2
+      - ORCHESTRATOR_HOST=orchestrator
+    depends_on:
+      - orchestrator
