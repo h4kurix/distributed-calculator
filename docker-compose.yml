@@ -23,7 +23,6 @@ services:
     env_file:
       - .env
     environment:
-      - COMPUTING_POWER=2
       - ORCHESTRATOR_HOST=orchestrator
     depends_on:
       - orchestrator
