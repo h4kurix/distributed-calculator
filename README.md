@@ -58,6 +58,8 @@ go mod tidy
 ```bash
 docker-compose up --build
 ```
+Сервис будет доступен по адресу `http://localhost:8080`
+
 ### Запуск оркестратора
 ```bash
 go run ./cmd/calc_service/main.go
