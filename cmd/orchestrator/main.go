@@ -7,24 +7,11 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
 	// Initialize logger
 	initLogger()
-
-	// Load environment variables from .env file
-	if err := godotenv.Load(); err != nil {
-		logger.Info("Warning: .env file not found or error loading: %v", err)
-	}
-
-	// Set default operation times if not in env
-	setDefaultEnvIfEmpty("TIME_ADDITION_MS", "100")
-	setDefaultEnvIfEmpty("TIME_SUBTRACTION_MS", "100")
-	setDefaultEnvIfEmpty("TIME_MULTIPLICATIONS_MS", "200")
-	setDefaultEnvIfEmpty("TIME_DIVISIONS_MS", "300")
 
 	// API for user
 	http.HandleFunc("/api/v1/calculate", handler.HandleCalculate)
@@ -47,7 +34,7 @@ func main() {
 	// Start background task to update task readiness periodically
 	go updateTasksReadinessPeriodically()
 
-	logger.Info("Server starting on port %s...", port)
+	logger.Info("Server starting on http://localhost:%s", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
@@ -68,12 +55,6 @@ func initLogger() {
 	}
 
 	logger.Init(logLevel)
-}
-
-func setDefaultEnvIfEmpty(key, value string) {
-	if os.Getenv(key) == "" {
-		os.Setenv(key, value)
-	}
 }
 
 func updateTasksReadinessPeriodically() {
